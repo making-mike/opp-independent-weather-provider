@@ -1,0 +1,57 @@
+name: OPP Conformance
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout provider
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Start provider
+        run: node server.mjs > provider.log 2>&1 &
+
+      - name: Wait for provider
+        run: |
+          for i in {1..30}; do
+            curl -sf http://127.0.0.1:3311/health && exit 0
+            sleep 1
+          done
+          cat provider.log
+          exit 1
+
+      - name: Checkout OPP conformance runner
+        uses: actions/checkout@v4
+        with:
+          repository: making-mike/Open-Prediction-Protocol
+          path: opp
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.2
+
+      - name: Install OPP dependencies
+        working-directory: opp
+        run: pnpm install --frozen-lockfile
+
+      - name: Run OPP HTTP conformance
+        working-directory: opp
+        run: pnpm run conformance:http -- http://127.0.0.1:3311 > ../conformance-report.json
+
+      - name: Upload conformance report
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformance-report
+          path: |
+            conformance-report.json
+            provider.log
