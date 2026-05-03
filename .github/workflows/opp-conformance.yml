@@ -46,7 +46,7 @@ jobs:
 
       - name: Run OPP HTTP conformance
         working-directory: opp
-        run: pnpm run conformance:http -- http://127.0.0.1:3311 > ../conformance-report.json
+        run: pnpm run conformance:http http://127.0.0.1:3311 > ../conformance-report.json
 
       - name: Upload conformance report
         uses: actions/upload-artifact@v4
