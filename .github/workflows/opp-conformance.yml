@@ -29,6 +29,12 @@ jobs:
           cat provider.log
           exit 1
 
+      - name: Check public metadata endpoints
+        run: |
+          curl -sf http://127.0.0.1:3311/.well-known/agent-card.json > /dev/null
+          curl -sf http://127.0.0.1:3311/conformance/latest.json > /dev/null
+          curl -sf http://127.0.0.1:3311/evidence/latest.json > /dev/null
+
       - name: Checkout OPP conformance runner
         uses: actions/checkout@v4
         with:
