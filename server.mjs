@@ -1,9 +1,13 @@
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
+import { pathToFileURL } from "node:url";
 
 const host = process.env.HOST ?? "127.0.0.1";
 const port = Number(process.env.PORT ?? 3311);
-const baseUrl = (process.env.PUBLIC_BASE_URL ?? `http://${host}:${port}`).replace(/\/+$/, "");
+const baseUrl = (
+  process.env.PUBLIC_BASE_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `http://${host}:${port}`)
+).replace(/\/+$/, "");
 const processStartedAt = new Date().toISOString();
 
 const providerId = "independent-weather-provider-1";
@@ -352,35 +356,36 @@ function sendJsonRpcError(response, statusCode, id, code, message) {
   });
 }
 
-const server = createServer(async (request, response) => {
+export async function handleOppRequest(request, response) {
   const requestUrl = new URL(request.url ?? "/", baseUrl);
+  const pathname = normalizePathname(requestUrl.pathname);
 
-  if (request.method === "GET" && requestUrl.pathname === "/.well-known/agent.json") {
+  if (request.method === "GET" && pathname === "/.well-known/agent.json") {
     sendJson(response, 200, agentCard);
     return;
   }
 
-  if (request.method === "GET" && requestUrl.pathname === "/.well-known/agent-card.json") {
+  if (request.method === "GET" && pathname === "/.well-known/agent-card.json") {
     sendJson(response, 200, a2aAgentCard);
     return;
   }
 
-  if (request.method === "GET" && requestUrl.pathname === "/conformance/latest.json") {
+  if (request.method === "GET" && pathname === "/conformance/latest.json") {
     sendJson(response, 200, latestConformanceReport);
     return;
   }
 
-  if (request.method === "GET" && requestUrl.pathname === "/evidence/latest.json") {
+  if (request.method === "GET" && pathname === "/evidence/latest.json") {
     sendJson(response, 200, latestEvidenceRecord);
     return;
   }
 
-  if (request.method === "GET" && requestUrl.pathname === "/health") {
+  if (request.method === "GET" && pathname === "/health") {
     sendJson(response, 200, { status: "ok" });
     return;
   }
 
-  if (request.method === "POST" && requestUrl.pathname === "/rpc") {
+  if (request.method === "POST" && pathname === "/rpc") {
     let payload;
     try {
       payload = await parseJsonBody(request);
@@ -475,8 +480,24 @@ const server = createServer(async (request, response) => {
       message: "Route not found"
     }
   });
-});
+}
 
-server.listen(port, host, () => {
-  console.log(`Independent OPP provider listening on http://${host}:${port}`);
-});
+function normalizePathname(pathname) {
+  if (pathname === "/api") {
+    return "/";
+  }
+
+  if (pathname.startsWith("/api/")) {
+    return pathname.slice(4);
+  }
+
+  return pathname;
+}
+
+const server = createServer(handleOppRequest);
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  server.listen(port, host, () => {
+    console.log(`Independent OPP provider listening on http://${host}:${port}`);
+  });
+}
