@@ -4,9 +4,11 @@ import { pathToFileURL } from "node:url";
 
 const host = process.env.HOST ?? "127.0.0.1";
 const port = Number(process.env.PORT ?? 3311);
+const publicBaseUrl = process.env.PUBLIC_BASE_URL?.trim();
+const vercelUrl = process.env.VERCEL_URL?.trim();
 const baseUrl = (
-  process.env.PUBLIC_BASE_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : `http://${host}:${port}`)
+  publicBaseUrl ||
+  (vercelUrl ? `https://${vercelUrl}` : `http://${host}:${port}`)
 ).replace(/\/+$/, "");
 const processStartedAt = new Date().toISOString();
 
